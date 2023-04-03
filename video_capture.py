@@ -85,7 +85,9 @@ if not os.path.exists(video_root):
         os.makedirs(video_root)
 video_path=os.path.join(video_root,'output.mp4')
 
-size = 640*2, 480
+size = [2448*2//4, 1840//4]
+print(size[0])
+print(size)
 duration = 2
 fps = 20
 fourcc = cv2.VideoWriter_fourcc(*'MP4V')
@@ -104,19 +106,17 @@ try:
         data1 = img1.get_image_data_numpy()
         data2 = img2.get_image_data_numpy()
 
-        # print(data1.shape)
-
         # show acquired image with time since the beginning of acquisition
         font = cv2.FONT_HERSHEY_SIMPLEX
         text = '{:5.2f}'.format(time.time() - t0)
-        cv2.putText(data1, text, (900, 150), font, 4, (255, 255, 255), 2)
-        cv2.putText(data2, text, (900, 150), font, 4, (255, 255, 255), 2)
-        # cv2.imshow('cam1', data1)
-        # cv2.imshow('cam2', data2)
-
-
+        cv2.putText(data1, 'camera1', (900, 150), font, 4, (255, 255, 255), 2)
+        cv2.putText(data2, 'camera2', (900, 150), font, 4, (255, 255, 255), 2)
         data=np.concatenate((data1,data2),axis=1)
+        print(data.shape)
+        cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2)
+
         data_resized=cv2.resize(data, dsize=(size[0], size[1]))
+
         cv2.imshow('cam1 & cam2',data_resized)
         out.write(data_resized)
 
