@@ -411,7 +411,7 @@ while True:
         cv2.destroyAllWindows()
         break
 
-print('\n%d pictures has been collected'%(case+1))
+print('\n%d cases has been collected'%(case+1))
 
 com.close()
 winsound.Beep(600,1000)
