@@ -51,24 +51,24 @@ cam2.open_device()
 # settings
 
 cam1.set_imgdataformat('XI_RGB24')
-cam1.set_exposure(50000)
+cam1.set_exposure(10000)
 cam1.disable_auto_wb()
 cam1.set_wb_kr(1.110)
 cam1.set_wb_kg(0.985)
 cam1.set_wb_kb(2.5)
 cam1.set_gain(0)
 cam1.set_downsampling('XI_DWN_2x2')
-cam1.set_gain(5)
+cam1.set_gain(20)
 
 cam2.set_imgdataformat('XI_RGB24')
-cam2.set_exposure(50000)
+cam2.set_exposure(10000)
 cam2.disable_auto_wb()
 cam2.set_wb_kr(1.110)
 cam2.set_wb_kg(1.001)
 cam2.set_wb_kb(2.435)
 cam2.set_gain(0)
 cam2.set_downsampling('XI_DWN_2x2')
-cam1.set_gain(5)
+cam2.set_gain(20)
 
 # create instance of Image to store image data and metadata
 img1 = xiapi.Image()
@@ -89,43 +89,41 @@ size = [2448*2//4, 1840//4]
 print(size[0])
 print(size)
 duration = 2
-fps = 20
-fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+fps = 25
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(video_path, fourcc, fps, (size[0], size[1]), True)
 
-try:
-    print('Starting video. Press CTRL+C to exit.')
-    t0 = time.time()
-    while True:
-        # get data and pass them from camera to img
-        cam1.get_image(img1)
-        cam2.get_image(img2)
 
-        # create numpy array with data from camera. Dimensions of the array are
-        # determined by imgdataformat
-        data1 = img1.get_image_data_numpy()
-        data2 = img2.get_image_data_numpy()
+print('Starting video. Press ESC to exit.')
+t0 = time.time()
+while True:
+    # get data and pass them from camera to img
+    cam1.get_image(img1)
+    cam2.get_image(img2)
 
-        # show acquired image with time since the beginning of acquisition
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        text = '{:5.2f}'.format(time.time() - t0)
-        cv2.putText(data1, 'camera1', (900, 150), font, 4, (255, 255, 255), 2)
-        cv2.putText(data2, 'camera2', (900, 150), font, 4, (255, 255, 255), 2)
-        data=np.concatenate((data1,data2),axis=1)
-        print(data.shape)
-        cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2)
+    # create numpy array with data from camera. Dimensions of the array are
+    # determined by imgdataformat
+    data1 = img1.get_image_data_numpy()
+    data2 = img2.get_image_data_numpy()
 
-        data_resized=cv2.resize(data, dsize=(size[0], size[1]))
+    # show acquired image with time since the beginning of acquisition
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text = '{:5.2f}'.format(time.time() - t0)
+    cv2.putText(data1, 'camera1', (900, 150), font, 4, (255, 255, 255), 2)
+    cv2.putText(data2, 'camera2', (900, 150), font, 4, (255, 255, 255), 2)
+    data=np.concatenate((data1,data2),axis=1)
+    cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2)
 
-        cv2.imshow('cam1 & cam2',data_resized)
-        out.write(data_resized)
+    data_resized=cv2.resize(data, dsize=(size[0], size[1]))
 
+    cv2.imshow('cam1 & cam2',data_resized)
+    out.write(data_resized)
 
-        cv2.waitKey(1)
-
-except KeyboardInterrupt:
-    cv2.destroyAllWindows()
-    out.release()
+    k = cv2.waitKey(1) & 0Xff
+    if k==27:
+        cv2.destroyAllWindows()
+        out.release()
+        break
 
 # stop data acquisition
 print('Stopping acquisition...')
