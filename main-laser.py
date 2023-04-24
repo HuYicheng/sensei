@@ -103,8 +103,10 @@ step = 36
 max_round = 360/step
 rotRatio = 0.9166/5
 
-patternDir = os.path.join(rootdir, 'GrayCode_pattern')
+#initialize projector
+patternDir = os.path.join(rootdir, 'patterns_ppt')
 patterns = sorted(glob.glob(patternDir + '/*.png'))
+print(patterns)
 
 projector=get_monitors()[1]
 print(projector)
@@ -124,6 +126,7 @@ def showPatternImg(patternCnt):
     plt.pause(1)
     plt.clf()
 
+#initialize laser
 task = nidaqmx.Task()
 task.ao_channels.add_ao_voltage_chan("Dev1/ao1")
 
@@ -140,8 +143,8 @@ while True:
     com.flushOutput()
     task.write(-9, auto_start=True)
 
-    cam1.set_exposure(100000)
-    cam2.set_exposure(100000)
+    cam1.set_exposure(300000)
+    cam2.set_exposure(300000)
     cam1.disable_auto_wb()
     cam2.disable_auto_wb()
     cam1.get_image(img1)
@@ -183,9 +186,9 @@ while True:
     if k == 27:
         # Laser off
         task.write(9, auto_start=True)
-        task.start()
-        task.stop()
-        task.close()
+        # task.start()
+        # task.stop()
+        # task.close()
         cv2.destroyAllWindows()
         print('Laser Check Done!')
         break
@@ -224,7 +227,7 @@ while True:
     else:
         print('Please Use y or n')
 
-pthRoot = os.path.join(rootdir, 'collectedData', 'test')
+pthRoot = os.path.join(rootdir, 'collectedData', 'test_pattern_ppt')
 
 if not os.path.isdir(pthRoot):
     os.makedirs(pthRoot)
@@ -299,13 +302,21 @@ while True:
 
     case=len(os.listdir(pthRoot_rgb_C0))
 
+    pthRoot_stl_case_C0 = os.path.join(pthRoot_stl_C0, str(case).zfill(5))
+    pthRoot_stl_case_C1 = os.path.join(pthRoot_stl_C1, str(case).zfill(5))
+
+    if not os.path.isdir(pthRoot_stl_case_C0):
+        os.makedirs(pthRoot_stl_case_C0)
+    if not os.path.isdir(pthRoot_stl_case_C1):
+        os.makedirs(pthRoot_stl_case_C1)
+
     # Capture RGB image for camera0 and camera1 with laser on
     # Laser on
-    task = nidaqmx.Task()
-    task.ao_channels.add_ao_voltage_chan("Dev1/ao1")
+    # task = nidaqmx.Task()
+    # task.ao_channels.add_ao_voltage_chan("Dev1/ao1")
 
-    cam1.set_exposure(200000)
-    cam2.set_exposure(200000)
+    cam1.set_exposure(300000)
+    cam2.set_exposure(300000)
 
     showPatternImg(23)
 
@@ -315,21 +326,25 @@ while True:
     #time.sleep(1)
 
     task.write(3, auto_start=True)
-    time.sleep(2)
+    time.sleep(3)
 
     cam1.get_image(img1)
     cam2.get_image(img2)
     data_raw_on_1 = img1.get_image_data_numpy()
     data_raw_on_2 = img2.get_image_data_numpy()
-    path_RGB_rgb_C0 = os.path.join(pthRoot_rgb_C0, str(case)+'.jpg')
-    path_RGB_rgb_C1 = os.path.join(pthRoot_rgb_C1, str(case)+'.jpg')
+    path_RGB_rgb_C0 = os.path.join(pthRoot_rgb_C0, str(case).zfill(5)+'.jpg')
+    path_RGB_rgb_C1 = os.path.join(pthRoot_rgb_C1, str(case).zfill(5)+'.jpg')
     cv2.imwrite(path_RGB_rgb_C0, data_raw_on_1)
     cv2.imwrite(path_RGB_rgb_C1, data_raw_on_2)
-    path_RGB_rgb_line_C0 = os.path.join(pthRoot_rgb_line_C0, str(case)+'.jpg')
-    path_RGB_rgb_line_C1 = os.path.join(pthRoot_rgb_line_C1, str(case)+'.jpg')
+    path_RGB_rgb_line_C0 = os.path.join(pthRoot_rgb_line_C0, str(case).zfill(5)+'.jpg')
+    path_RGB_rgb_line_C1 = os.path.join(pthRoot_rgb_line_C1, str(case).zfill(5)+'.jpg')
     cv2.imwrite(path_RGB_rgb_line_C0, data_raw_on_1)
     cv2.imwrite(path_RGB_rgb_line_C1, data_raw_on_2)
-    time.sleep(2)
+    path_RGB_rgb_line_C0 = os.path.join(pthRoot_stl_case_C0, '00.jpg')
+    path_RGB_rgb_line_C1 = os.path.join(pthRoot_stl_case_C1, '00.jpg')
+    cv2.imwrite(path_RGB_rgb_line_C0, data_raw_on_1)
+    cv2.imwrite(path_RGB_rgb_line_C1, data_raw_on_2)
+    # time.sleep(3)
     print('RGB collected')
 
     cam1.set_exposure(250000)
@@ -344,11 +359,11 @@ while True:
     cam2.get_image(img2)
     data_raw_on_1 = img1.get_image_data_numpy()
     data_raw_on_2 = img2.get_image_data_numpy()
-    path_RGB_laser_off_C0 = os.path.join(pthRoot_laser_off_C0, str(case)+'.jpg')
-    path_RGB_laser_off_C1 = os.path.join(pthRoot_laser_off_C1, str(case)+'.jpg')
+    path_RGB_laser_off_C0 = os.path.join(pthRoot_laser_off_C0, str(case).zfill(5)+'.jpg')
+    path_RGB_laser_off_C1 = os.path.join(pthRoot_laser_off_C1, str(case).zfill(5)+'.jpg')
     cv2.imwrite(path_RGB_laser_off_C0, data_raw_on_1)
     cv2.imwrite(path_RGB_laser_off_C1, data_raw_on_2)
-    time.sleep(1)
+    # time.sleep(1)
     print('Laser Off collected')
 
     # Laser on
@@ -359,20 +374,14 @@ while True:
     cam2.get_image(img2)
     data_raw_off_1 = img1.get_image_data_numpy()
     data_raw_off_2 = img2.get_image_data_numpy()
-    path_RGB_laser_on_C0 = os.path.join(pthRoot_laser_on_C0, str(case)+'.jpg')
-    path_RGB_laser_on_C1 = os.path.join(pthRoot_laser_on_C1, str(case)+'.jpg')
+    path_RGB_laser_on_C0 = os.path.join(pthRoot_laser_on_C0, str(case).zfill(5)+'.jpg')
+    path_RGB_laser_on_C1 = os.path.join(pthRoot_laser_on_C1, str(case).zfill(5)+'.jpg')
     cv2.imwrite(path_RGB_laser_on_C0, data_raw_off_1)
     cv2.imwrite(path_RGB_laser_on_C1, data_raw_off_2)
-    time.sleep(1)
+    # time.sleep(1)
     print('Laser On collected')
 
-    pthRoot_stl_case_C0 = os.path.join(pthRoot_stl_C0, str(case))
-    pthRoot_stl_case_C1 = os.path.join(pthRoot_stl_C1, str(case))
 
-    if not os.path.isdir(pthRoot_stl_case_C0):
-        os.makedirs(pthRoot_stl_case_C0)
-    if not os.path.isdir(pthRoot_stl_case_C1):
-        os.makedirs(pthRoot_stl_case_C1)
 
     task.write(3, auto_start=True)#laser off
     time.sleep(1)
@@ -386,17 +395,17 @@ while True:
         cam2.get_image(img2)
         data_raw_off_1 = img1.get_image_data_numpy()
         data_raw_off_2 = img2.get_image_data_numpy()
-        path_stl_case_C0 = os.path.join(pthRoot_stl_case_C0, '{:02d}.jpg'.format(patternCnt))
-        path_stl_case_C1 = os.path.join(pthRoot_stl_case_C1, '{:02d}.jpg'.format(patternCnt))
+        path_stl_case_C0 = os.path.join(pthRoot_stl_case_C0, '{:02d}.jpg'.format(patternCnt+1))
+        path_stl_case_C1 = os.path.join(pthRoot_stl_case_C1, '{:02d}.jpg'.format(patternCnt+1))
         cv2.imwrite(path_stl_case_C0, data_raw_off_1)
         cv2.imwrite(path_stl_case_C1, data_raw_off_2)
-        time.sleep(1)
+        # time.sleep(1)
     print('Stl Collected')
 
     task.write(3, auto_start=True)
-    task.start()
-    task.stop()
-    task.close()
+    # task.start()
+    # task.stop()
+    # task.close()
 
     print("Images written..., rotate for next round...")
     #time.sleep(1)
@@ -412,6 +421,10 @@ while True:
         break
 
 print('\n%d cases has been collected'%(case+1))
+
+task.start()
+task.stop()
+task.close()
 
 com.close()
 winsound.Beep(600,1000)
