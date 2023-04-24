@@ -79,8 +79,7 @@ cam2.set_downsampling('XI_DWN_2x2')
 print('Cam1: Exposure was set to %i us' %cam1.get_exposure())
 print('Cam2: Exposure was set to %i us' %cam2.get_exposure())
 print('Cam1: Downsampling was set to %s us' %cam1.get_downsampling())
-print('Cam2: Downsampling was set to %s us' %cam1.get_downsampling_type())
-print('Cam2: Downsampling was set to %s us' %cam2.get_downsampling_type())
+print('Cam2: Downsampling was set to %s us' %cam2.get_downsampling())
 
 cam1.enable_horizontal_flip()
 cam2.enable_horizontal_flip()
@@ -119,18 +118,18 @@ while True:
     print('------Please Check View and Enter Esc for Exit Display------')
     while True:
 
-        # cam1.get_image(img1)
-        # data_raw1 = img1.get_image_data_numpy()
-        # data_raw_1=data_raw1[1000:1250,500:750,:]
-        # cv2.imshow('CAM 1_full', cv2.resize(data_raw1, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
-        # cv2.imshow('CAM 1_focus',data_raw_1)
+        cam1.get_image(img1)
+        data_raw1 = img1.get_image_data_numpy()
+        data_raw_1=data_raw1[1000:1250,500:750,:]
+        cv2.imshow('CAM 1_full', cv2.resize(data_raw1, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
+        cv2.imshow('CAM 1_focus',data_raw_1)
 
 
-        cam2.get_image(img2)
-        data_raw2 = img2.get_image_data_numpy()
-        data_raw_2 = data_raw2[1000:1250,500:750,:]
-        cv2.imshow('CAM 2_full', cv2.resize(data_raw2, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
-        cv2.imshow('CAM 2_focus',data_raw_2)
+        # cam2.get_image(img2)
+        # data_raw2 = img2.get_image_data_numpy()
+        # data_raw_2 = data_raw2[1000:1250,500:750,:]
+        # cv2.imshow('CAM 2_full', cv2.resize(data_raw2, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
+        # cv2.imshow('CAM 2_focus',data_raw_2)
 
 
         k = cv2.waitKey(1) & 0Xff
@@ -153,19 +152,19 @@ while True:
 
     time.sleep(1)
 
-    # cam1.get_image(img1)
-    # data_raw_on_1 = img1.get_image_data_numpy()
-    # case=len(os.listdir(pthRoot_C0))
-    # path_RGB_C0 = os.path.join(pthRoot_C0, str(case)+'.jpg')
-    # cv2.imwrite(path_RGB_C0, data_raw_on_1)
+    cam1.get_image(img1)
+    data_raw_on_1 = img1.get_image_data_numpy()
+    case=len(os.listdir(pthRoot_C0))
+    path_RGB_C0 = os.path.join(pthRoot_C0, str(case)+'.jpg')
+    cv2.imwrite(path_RGB_C0, data_raw_on_1)
 
-    cam2.get_image(img2)
-    data_raw_on_2 = img2.get_image_data_numpy()
-    case=len(os.listdir(pthRoot_C1))
-    path_RGB_C1 = os.path.join(pthRoot_C1, str(case)+'.jpg')
-    cv2.imwrite(path_RGB_C1, data_raw_on_2)
+    # cam2.get_image(img2)
+    # data_raw_on_2 = img2.get_image_data_numpy()
+    # case=len(os.listdir(pthRoot_C1))
+    # path_RGB_C1 = os.path.join(pthRoot_C1, str(case)+'.jpg')
+    # cv2.imwrite(path_RGB_C1, data_raw_on_2)
 
-    time.sleep(2)
+    # time.sleep(2)
 
     cv2.destroyAllWindows()
 
