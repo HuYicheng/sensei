@@ -11,7 +11,11 @@ import time
 import serial
 import winsound
 import numpy as np
-
+import glob
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from screeninfo import get_monitors
+from PIL import Image
 
 com = serial.Serial(port='COM6',
                         baudrate=115200,
@@ -34,8 +38,37 @@ com.write(bytearray([0x10, 0x02, 0x01, 0x01, 0x21, 0x01]))  # enable
 com.flushInput()
 com.flushOutput()
 
+ser = serial.Serial(port="COM3",
+                    baudrate=115200,
+                    bytesize=8,
+                    timeout=2,
+                    stopbits=serial.STOPBITS_ONE)
+print('the status of ser is %s'%ser.is_open)
 
+rootdir='E:\Download\Ximea-2023-Phantom-laser-rotate'
 
+patternDir = os.path.join(rootdir, 'GrayCode_pattern_10bit')
+patterns = sorted(glob.glob(patternDir + '/*.png'))
+
+projector=get_monitors()[1]
+print(projector)
+
+def showPatternImg(patternCnt):
+    plt.close()
+    mpl.rcParams['toolbar'] = 'None'
+    fig = plt.figure(frameon=False)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.axis('off')
+    plt.imshow(Image.open(patterns[patternCnt]))
+    figManager = plt.get_current_fig_manager()
+    figManager.window.setGeometry(projector.x, projector.y, projector.width, projector.height)
+    figManager.full_screen_toggle()
+    plt.show(block=False)
+    # print('Pattern %d is projected' %patternCnt)
+    plt.pause(1)
+    plt.clf()
+
+showPatternImg(23)
 
 cam1 = xiapi.Camera(dev_id=0) #create instance for cameras
 cam2 = xiapi.Camera(dev_id=1)
@@ -83,7 +116,7 @@ cam2.start_acquisition()
 video_root=r'E:\Download\Ximea-2023-Phantom-laser-rotate\video'
 if not os.path.exists(video_root):
         os.makedirs(video_root)
-video_path=os.path.join(video_root,'output.mp4')
+video_path=os.path.join(video_root,'sensei.mp4')
 
 size = [2448*2//4, 1840//4]
 print(size[0])
@@ -106,6 +139,10 @@ while True:
     data1 = img1.get_image_data_numpy()
     data2 = img2.get_image_data_numpy()
 
+    data_raw_sensei = ser.readline()
+    num_sensei = data_raw_sensei.decode()  # a is str
+    num_sensei = "".join(filter(str.isdigit, num_sensei))
+
     # show acquired image with time since the beginning of acquisition
     font = cv2.FONT_HERSHEY_SIMPLEX
     text = '{:5.2f}'.format(time.time() - t0)
@@ -113,6 +150,7 @@ while True:
     cv2.putText(data2, 'camera2', (900, 150), font, 4, (255, 255, 255), 2)
     data=np.concatenate((data1,data2),axis=1)
     cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2)
+    cv2.putText(data,num_sensei,(data.shape[1]//2-300, data.shape[0]-300),font,4,(255, 255, 255), 2)
 
     data_resized=cv2.resize(data, dsize=(size[0], size[1]))
 
