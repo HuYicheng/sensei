@@ -6,7 +6,13 @@ import os
 import time
 import serial
 import winsound
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from PIL import Image
 import numpy as np
+from screeninfo import get_monitors
+import glob
+
 
 
 com = serial.Serial(port='COM6',
@@ -99,8 +105,30 @@ cam2.start_acquisition()
 rootdir = os.getcwd()
 
 
+patternDir = os.path.join(rootdir, 'GrayCode_pattern')
+patterns = sorted(glob.glob(patternDir + '/*.png'))
+
+projector=get_monitors()[1]
+print(projector)
+
+def showPatternImg(patternCnt):
+    plt.close()
+    mpl.rcParams['toolbar'] = 'None'
+    fig = plt.figure(frameon=False)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.axis('off')
+    plt.imshow(Image.open(patterns[patternCnt]))
+    figManager = plt.get_current_fig_manager()
+    figManager.window.setGeometry(projector.x, projector.y, projector.width, projector.height)
+    figManager.full_screen_toggle()
+    plt.show(block=False)
+    # print('Pattern %d is projected' %patternCnt)
+    plt.pause(1)
+    plt.clf()
+
+
 # Get current dir and creat folders for the day
-pthRoot = os.path.join(rootdir, 'calibrationData')
+pthRoot = os.path.join(rootdir, 'calibrationData','3')
 pthRoot_C0 = os.path.join(pthRoot, 'camera0')
 pthRoot_C1 = os.path.join(pthRoot, 'camera1')
 
@@ -110,6 +138,8 @@ if not os.path.isdir(pthRoot_C0):
     os.makedirs(pthRoot_C0)
 if not os.path.isdir(pthRoot_C1):
     os.makedirs(pthRoot_C1)
+
+showPatternImg(23)
 
 while True:
     k = cv2.waitKey(1) & 0Xff
