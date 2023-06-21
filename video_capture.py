@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 from screeninfo import get_monitors
 from PIL import Image
 import threading
+import random
+
+
 
 class SerialReader(threading.Thread):
     def __init__(self, serial_instance):
@@ -180,12 +183,6 @@ print('Starting video. Press ESC to exit.')
 t0 = time.time()
 while True:
 
-    # get data and pass them from camera to img
-    # cam1.get_image(img1)
-    # cam2.get_image(img2)
-
-    # create numpy array with data from camera. Dimensions of the array are
-    # determined by imgdataformat
     data1 = camera_reader.current_data1
     data2 = camera_reader.current_data2
     if data1 is None or data2 is None:
@@ -196,12 +193,12 @@ while True:
     # show acquired image with time since the beginning of acquisition
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    point1_x,point1_y=[1000,300]
+    point1_x,point1_y=[random.randint(500, 600),random.randint(700, 800)]
     cv2.circle(data1, (point1_x,point1_y), 10, (0,0,255), -1)
     cv2.putText(data1,num_sensei,(point1_x+3, point1_y+3),font,4,(255, 255, 255), 2)
     cv2.putText(data1, 'camera0', (900, 150), font, 4, (255, 255, 255), 2)
 
-    point2_x,point2_y=[500,1000]
+    point2_x,point2_y=[random.randint(800, 850),random.randint(450, 500)]
     cv2.circle(data2, (point2_x,point2_y), 10, (0,0,255), -1)
     cv2.putText(data2,num_sensei,(point2_x+3, point2_y+3),font,4,(255, 255, 255), 2)
     cv2.putText(data2, 'camera1', (900, 150), font, 4, (255, 255, 255), 2)
