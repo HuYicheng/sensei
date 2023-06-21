@@ -16,6 +16,51 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from screeninfo import get_monitors
 from PIL import Image
+import threading
+
+class SerialReader(threading.Thread):
+    def __init__(self, serial_instance):
+        threading.Thread.__init__(self)
+        self.serial_instance = serial_instance
+        self.current_value = None
+        self.running = True
+
+    def run(self):
+        while self.running:
+            if self.serial_instance.in_waiting:
+                data_raw_sensei = self.serial_instance.readline()
+                num_sensei = data_raw_sensei.decode()
+                self.current_value = "".join(filter(str.isdigit, num_sensei))
+
+    def stop(self):
+        self.running = False
+
+class CameraReader(threading.Thread):
+    def __init__(self, cam1, cam2, img1, img2):
+        threading.Thread.__init__(self)
+        self.cam1 = cam1
+        self.cam2 = cam2
+        self.img1 = img1
+        self.img2 = img2
+        self.current_data1 = None
+        self.current_data2 = None
+        self.running = True
+
+    def run(self):
+        while self.running:
+            # get data and pass them from camera to img
+            self.cam1.get_image(self.img1)
+            self.cam2.get_image(self.img2)
+
+            # create numpy array with data from camera
+            self.current_data1 = self.img1.get_image_data_numpy()
+            self.current_data2 = self.img2.get_image_data_numpy()
+
+    def stop(self):
+        self.running = False
+
+
+
 
 com = serial.Serial(port='COM6',
                         baudrate=115200,
@@ -44,6 +89,8 @@ ser = serial.Serial(port="COM3",
                     timeout=2,
                     stopbits=serial.STOPBITS_ONE)
 print('the status of ser is %s'%ser.is_open)
+serial_reader = SerialReader(ser)
+serial_reader.start()
 
 rootdir='E:\Download\Ximea-2023-Phantom-laser-rotate'
 
@@ -112,6 +159,8 @@ print('Starting data acquisition...')
 cam1.start_acquisition()
 cam2.start_acquisition()
 
+camera_reader = CameraReader(cam1, cam2, img1, img2)
+camera_reader.start()
 
 video_root=r'E:\Download\Ximea-2023-Phantom-laser-rotate\video'
 if not os.path.exists(video_root):
@@ -121,8 +170,8 @@ video_path=os.path.join(video_root,'sensei.mp4')
 size = [2448*2//4, 1840//4]
 print(size[0])
 print(size)
-duration = 2
-fps = 25
+# duration = 2
+fps = 30
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(video_path, fourcc, fps, (size[0], size[1]), True)
 
@@ -130,27 +179,37 @@ out = cv2.VideoWriter(video_path, fourcc, fps, (size[0], size[1]), True)
 print('Starting video. Press ESC to exit.')
 t0 = time.time()
 while True:
+
     # get data and pass them from camera to img
-    cam1.get_image(img1)
-    cam2.get_image(img2)
+    # cam1.get_image(img1)
+    # cam2.get_image(img2)
 
     # create numpy array with data from camera. Dimensions of the array are
     # determined by imgdataformat
-    data1 = img1.get_image_data_numpy()
-    data2 = img2.get_image_data_numpy()
+    data1 = camera_reader.current_data1
+    data2 = camera_reader.current_data2
+    if data1 is None or data2 is None:
+            continue
 
-    data_raw_sensei = ser.readline()
-    num_sensei = data_raw_sensei.decode()  # a is str
-    num_sensei = "".join(filter(str.isdigit, num_sensei))
+    num_sensei = serial_reader.current_value
 
     # show acquired image with time since the beginning of acquisition
     font = cv2.FONT_HERSHEY_SIMPLEX
+
+    point1_x,point1_y=[1000,300]
+    cv2.circle(data1, (point1_x,point1_y), 10, (0,0,255), -1)
+    cv2.putText(data1,num_sensei,(point1_x+3, point1_y+3),font,4,(255, 255, 255), 2)
+    cv2.putText(data1, 'camera0', (900, 150), font, 4, (255, 255, 255), 2)
+
+    point2_x,point2_y=[500,1000]
+    cv2.circle(data2, (point2_x,point2_y), 10, (0,0,255), -1)
+    cv2.putText(data2,num_sensei,(point2_x+3, point2_y+3),font,4,(255, 255, 255), 2)
+    cv2.putText(data2, 'camera1', (900, 150), font, 4, (255, 255, 255), 2)
+
+
     text = '{:5.2f}'.format(time.time() - t0)
-    cv2.putText(data1, 'camera1', (900, 150), font, 4, (255, 255, 255), 2)
-    cv2.putText(data2, 'camera2', (900, 150), font, 4, (255, 255, 255), 2)
     data=np.concatenate((data1,data2),axis=1)
     cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2)
-    cv2.putText(data,num_sensei,(data.shape[1]//2-300, data.shape[0]-300),font,4,(255, 255, 255), 2)
 
     data_resized=cv2.resize(data, dsize=(size[0], size[1]))
 
@@ -163,13 +222,19 @@ while True:
         out.release()
         break
 
-# stop data acquisition
+# stop process
+camera_reader.stop()
+camera_reader.join()
+serial_reader.stop()
+serial_reader.join()
+
 print('Stopping acquisition...')
 cam1.stop_acquisition()
 cam2.stop_acquisition()
 
-# stop communication
+print('Closing devices...')
 cam1.close_device()
 cam2.close_device()
 
 print('Done.')
+

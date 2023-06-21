@@ -76,7 +76,7 @@ cam1.set_imgdataformat('XI_RGB24')
 cam1.set_exposure(1000000)
 cam1.disable_auto_wb()
 cam1.set_wb_kr(1.110)
-cam1.set_wb_kg(0.985)
+cam1.set_wb_kg(0.980)
 cam1.set_wb_kb(2.5)
 
 cam2.set_imgdataformat('XI_RGB24')

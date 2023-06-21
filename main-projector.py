@@ -65,7 +65,7 @@ cam1.set_imgdataformat('XI_RGB24')
 cam1.set_exposure(1000000)
 cam1.disable_auto_wb()
 cam1.set_wb_kr(1.110)
-cam1.set_wb_kg(0.985)
+cam1.set_wb_kg(0.980)
 cam1.set_wb_kb(2.5)
 cam1.set_gain(0)
 cam1.set_downsampling('XI_DWN_2x2')
@@ -259,8 +259,8 @@ while True:
 
 
 
-    cam1.set_exposure(300000)
-    cam2.set_exposure(300000)
+    cam1.set_exposure(500000)
+    cam2.set_exposure(500000)
 
     showPatternImg(23)
 
@@ -290,7 +290,7 @@ while True:
     com.write(bytearray([0x10, 0x02, 0x01, 0x02, 0x21, 0x01]))   # 0x02 for disable
     com.flushInput()
     com.flushOutput()
-    time.sleep(2)
+    time.sleep(6)
 
     for patternCnt in range(22):
         showPatternImg(patternCnt)

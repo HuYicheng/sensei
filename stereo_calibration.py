@@ -66,7 +66,7 @@ cam1.set_imgdataformat('XI_RGB24')
 cam1.set_exposure(200000)
 cam1.disable_auto_wb()
 cam1.set_wb_kr(1.110)
-cam1.set_wb_kg(0.985)
+cam1.set_wb_kg(0.980)
 cam1.set_wb_kb(2.5)
 cam1.set_gain(0)
 cam1.set_downsampling('XI_DWN_2x2')
@@ -85,7 +85,8 @@ cam2.set_downsampling('XI_DWN_2x2')
 print('Cam1: Exposure was set to %i us' %cam1.get_exposure())
 print('Cam2: Exposure was set to %i us' %cam2.get_exposure())
 print('Cam1: Downsampling was set to %s us' %cam1.get_downsampling())
-print('Cam2: Downsampling was set to %s us' %cam1.get_downsampling_type())
+print('Cam2: Downsampling was set to %s us' %cam2.get_downsampling())
+print('Cam1: Downsampling was set to %s us' %cam1.get_downsampling_type())
 print('Cam2: Downsampling was set to %s us' %cam2.get_downsampling_type())
 
 cam1.enable_horizontal_flip()
@@ -128,7 +129,7 @@ def showPatternImg(patternCnt):
 
 
 # Get current dir and creat folders for the day
-pthRoot = os.path.join(rootdir, 'calibrationData','3')
+pthRoot = os.path.join(rootdir, 'calibrationData','12')
 pthRoot_C0 = os.path.join(pthRoot, 'camera0')
 pthRoot_C1 = os.path.join(pthRoot, 'camera1')
 
@@ -157,6 +158,8 @@ while True:
         data_raw_2 = data_raw2[1000:1250,500:750,:]
         cv2.imshow('CAM 1_full', cv2.resize(data_raw1, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
         cv2.imshow('CAM 2_full', cv2.resize(data_raw2, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
+
+
         cv2.imshow('CAM 1_focus',data_raw_1)
         cv2.imshow('CAM 2_focus',data_raw_2)
 
@@ -194,6 +197,7 @@ while True:
     time.sleep(2)
 
     cv2.destroyAllWindows()
+    print('case %s has been collected'%case)
 
 com.close()
 winsound.Beep(600,1000)
