@@ -1,8 +1,4 @@
 from ximea import xiapi
-import cv2
-import time
-
-from ximea import xiapi
 from datetime import datetime
 import sys
 import cv2
@@ -19,51 +15,53 @@ from PIL import Image
 import threading
 import random
 
-
-
 class SerialReader(threading.Thread):
     def __init__(self, serial_instance):
         threading.Thread.__init__(self)
         self.serial_instance = serial_instance
         self.current_value = None
         self.running = True
-
     def run(self):
         while self.running:
             if self.serial_instance.in_waiting:
                 data_raw_sensei = self.serial_instance.readline()
                 num_sensei = data_raw_sensei.decode()
                 self.current_value = "".join(filter(str.isdigit, num_sensei))
-
     def stop(self):
         self.running = False
 
-class CameraReader(threading.Thread):
-    def __init__(self, cam1, cam2, img1, img2):
+class Camera1Reader(threading.Thread):
+    def __init__(self, cam1, img1):
         threading.Thread.__init__(self)
         self.cam1 = cam1
-        self.cam2 = cam2
         self.img1 = img1
-        self.img2 = img2
         self.current_data1 = None
-        self.current_data2 = None
         self.running = True
-
     def run(self):
         while self.running:
             # get data and pass them from camera to img
             self.cam1.get_image(self.img1)
-            self.cam2.get_image(self.img2)
-
             # create numpy array with data from camera
             self.current_data1 = self.img1.get_image_data_numpy()
-            self.current_data2 = self.img2.get_image_data_numpy()
-
     def stop(self):
         self.running = False
 
+class Camera2Reader(threading.Thread):
+    def __init__(self, cam2, img2):
+        threading.Thread.__init__(self)
+        self.cam2 = cam2
+        self.img2 = img2
+        self.current_data2 = None
+        self.running = True
+    def run(self):
+        while self.running:
+            # get data and pass them from camera to img
+            self.cam2.get_image(self.img2)
 
-
+            # create numpy array with data from camera
+            self.current_data2 = self.img2.get_image_data_numpy()
+    def stop(self):
+        self.running = False
 
 com = serial.Serial(port='COM6',
                         baudrate=115200,
@@ -162,8 +160,10 @@ print('Starting data acquisition...')
 cam1.start_acquisition()
 cam2.start_acquisition()
 
-camera_reader = CameraReader(cam1, cam2, img1, img2)
-camera_reader.start()
+camera1_reader = Camera1Reader(cam1, img1)
+camera2_reader = Camera2Reader(cam2, img2)
+camera1_reader.start()
+camera2_reader.start()
 
 video_root=r'E:\Download\Ximea-2023-Phantom-laser-rotate\video'
 if not os.path.exists(video_root):
@@ -183,8 +183,8 @@ print('Starting video. Press ESC to exit.')
 t0 = time.time()
 while True:
 
-    data1 = camera_reader.current_data1
-    data2 = camera_reader.current_data2
+    data1 = camera1_reader.current_data1
+    data2 = camera2_reader.current_data2
     if data1 is None or data2 is None:
             continue
 
@@ -220,8 +220,10 @@ while True:
         break
 
 # stop process
-camera_reader.stop()
-camera_reader.join()
+camera1_reader.stop()
+camera1_reader.join()
+camera2_reader.stop()
+camera2_reader.join()
 serial_reader.stop()
 serial_reader.join()
 

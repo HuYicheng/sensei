@@ -129,7 +129,7 @@ def showPatternImg(patternCnt):
 
 
 # Get current dir and creat folders for the day
-pthRoot = os.path.join(rootdir, 'calibrationData','12')
+pthRoot = os.path.join(rootdir, 'calibrationData','13')
 pthRoot_C0 = os.path.join(pthRoot, 'camera0')
 pthRoot_C1 = os.path.join(pthRoot, 'camera1')
 

@@ -1,70 +1,256 @@
 import cv2
+
+import matplotlib.pyplot as plt  # plt 用于显示图片
+import matplotlib.image as mpimg  # mpimg 用于读取图片
+
+import sys
 import numpy as np
 import glob
+import os
+from stereo_calibration import pthRoot,pthRoot_C0,pthRoot_C1
+
+class StereoCalibration(object):
+    def __init__(self):
+        self.imagesL = self.read_images(pthRoot_C0)
+        self.imagesR = self.read_images(pthRoot_C1)
+        self.m1 = None
+        self.m2 = None
+        self.d1 = None
+        self.d2 = None
+        self.R = None
+        self.T = None
+        self.baseline=None
+
+    def read_images(self, cal_path):
+        filepath = glob.glob(cal_path + '/*.jpg')
+        filepath.sort()
+        return filepath
+
+    # 标定图像
+    def calibration_photo(self):
+        # 设置要标定的角点个数
+        x_nums = 8  # x方向上的角点个数
+        y_nums = 6
+        # 设置(生成)标定图在世界坐标中的坐标
+        world_point = np.zeros((x_nums * y_nums, 3), np.float32)  # 生成x_nums*y_nums个坐标，每个坐标包含x,y,z三个元素
+        world_point[:, :2] = np.mgrid[:x_nums, :y_nums].T.reshape(-1, 2)  # mgrid[]生成包含两个二维矩阵的矩阵，每个矩阵都有x_nums列,y_nums行
+        # .T矩阵的转置
+        # reshape()重新规划矩阵，但不改变矩阵元素
+        # 保存角点坐标
+        world_position = []
+        image_positionl = []
+        image_positionr = []
+        # 设置角点查找限制
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        # 获取所有标定图
+        for ii in range(101):
+
+            image_path_l = self.imagesL[ii]
+            image_path_r = self.imagesR[ii]
+
+            image_l = cv2.imread(image_path_l)
+            image_r = cv2.imread(image_path_r)
+            gray_l = cv2.cvtColor(image_l, cv2.COLOR_RGB2GRAY)
+            gray_r = cv2.cvtColor(image_r, cv2.COLOR_RGB2GRAY)
+
+            # 查找角点
+            #         ok,corners = cv2.findChessboardCorners(gray,(x_nums,y_nums),None)
+            ok1,cornersl = cv2.findChessboardCorners(gray_l,(x_nums,y_nums),None)
+            ok2,cornersr = cv2.findChessboardCorners(gray_r,(x_nums,y_nums),None)
+            # ok1, cornersl = cv2.findCirclesGrid(gray_l, (x_nums, y_nums), None)
+            # ok2, cornersr = cv2.findCirclesGrid(gray_r, (x_nums, y_nums), None)
+
+            self.world = world_point
+            print(ok1 & ok2)
+            if ok1 & ok2:
+                # 把每一幅图像的世界坐标放到world_position中
+                center_spacing = 15  ## 圆心的位置距离，这一个其实不重要
+                world_position.append(world_point * center_spacing)
+                # 获取更精确的角点位置
+                exact_cornersl = cv2.cornerSubPix(gray_l, cornersl, (11, 11), (-1, -1), criteria)
+                exact_cornersr = cv2.cornerSubPix(gray_r, cornersr, (11, 11), (-1, -1), criteria)
+                # 把获取的角点坐标放到image_position中
+                image_positionl.append(exact_cornersl)
+                image_positionr.append(exact_cornersr)
+                # 可视化角点
+        #             image = cv2.drawChessboardCorners(image,(x_nums,y_nums),exact_corners,ok)
+        #             cv2.imshow('image_corner',image)
+        #             cv2.waitKey(0)
+        # 计算内参数
+        image_shape = gray_l.shape[::-1]
+
+        retl, mtxl, distl, rvecsl, tvecsl = cv2.calibrateCamera(world_position, image_positionl, image_shape, None,
+                                                                None)
+        retr, mtxr, distr, rvecsr, tvecsr = cv2.calibrateCamera(world_position, image_positionr, image_shape, None,
+                                                                None)
+        print('ml = ', mtxl)
+        print('mr = ', mtxr)
+        print('dl = ', distl)
+        print('dr = ', distr)
+        self.m1 = mtxl
+        self.m2 = mtxr
+        self.d1 = distl
+        self.d2 = distr
+
+        # 计算误差
+        self.cal_error(world_position, image_positionl, mtxl, distl, rvecsl, tvecsl)
+        self.cal_error(world_position, image_positionr, mtxr, distr, rvecsr, tvecsr)
+
+        ##双目标定
+        self.stereo_calibrate(world_position, image_positionl, image_positionr, mtxl, distl, mtxr, distr, image_shape)
+
+    def cal_error(self, world_position, image_position, mtx, dist, rvecs, tvecs):
+        # 计算偏差
+        mean_error = 0
+        for i in range(len(world_position)):
+            image_position2, _ = cv2.projectPoints(world_position[i], rvecs[i], tvecs[i], mtx, dist)
+            error = cv2.norm(image_position[i], image_position2, cv2.NORM_L2) / len(image_position2)
+            mean_error += error
+        print("total error: ", mean_error / len(image_position))
+
+    def stereo_calibrate(self, objpoints, imgpoints_l, imgpoints_r, M1, d1, M2, d2, dims):
+        flags = 0
+        flags |= cv2.CALIB_FIX_INTRINSIC
+        flags |= cv2.CALIB_USE_INTRINSIC_GUESS
+        flags |= cv2.CALIB_FIX_FOCAL_LENGTH
+        flags |= cv2.CALIB_ZERO_TANGENT_DIST
+        stereocalib_criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 100, 1e-5)
+        ret, M1, d1, M2, d2, R, T, E, F = cv2.stereoCalibrate(
+            objpoints, imgpoints_l,
+            imgpoints_r, M1, d1, M2,
+            d2, dims,
+            criteria=stereocalib_criteria, flags=flags)
+        print(R)
+        print(T)
+        self.R = R
+        self.T = T
+        self.baseline=T[0]
 
 
+class stereoCamera(object):
+    def __init__(self):
+        # 左相机内参数
+        self.cam_matrix_left = calibration.m1
+        self.cam_matrix_right = calibration.m2
 
-# 找棋盘格角点
-# 设置寻找亚像素角点的参数，采用的停止准则是最大循环次数30和最大误差容限0.001
-criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001) # 阈值
-#棋盘格模板规格
-w = 8   # 9 - 1
-h = 6   # 7  - 1
-# 世界坐标系中的棋盘格点,例如(0,0,0), (1,0,0), (2,0,0) ....,(8,5,0)，去掉Z坐标，记为二维矩阵
-objp = np.zeros((w*h,3), np.float32)
-objp[:,:2] = np.mgrid[0:w,0:h].T.reshape(-1,2)
-objp = objp*9.56  # 18.1 mm
+        # 左右相机畸变系数:[k1, k2, p1, p2, k3]
+        self.distortion_l = calibration.d1
+        self.distortion_r = calibration.d2
+        # 旋转矩阵
 
-# 储存棋盘格角点的世界坐标和图像坐标对
-objpoints = [] # 在世界坐标系中的三维点
-imgpoints = [] # 在图像平面的二维点
-#加载pic文件夹下所有的jpg图像
-images = glob.glob('E:\Download\Ximea-2023-Phantom-laser-rotate\calibrationData\camera0/*.jpg')  #   拍摄的十几张棋盘图片所在目录
+        self.R = calibration.R
+        # 平移矩阵
+        self.T = calibration.T
 
-print('?1')
-
-i=0
-for fname in images:
-
-    img = cv2.imread(fname)
-    # 获取画面中心点
-    #获取图像的长宽
-    h1, w1 = img.shape[0], img.shape[1]
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    u, v = img.shape[:2]
-    print('?2')
-    # 找到棋盘格角点
-    ret, corners = cv2.findChessboardCorners(gray, (w,h),None)
-    print('?3')
-    # 如果找到足够点对，将其存储起来
-    if ret == True:
-        print("i:", i)
-        i = i+1
-        # 在原角点的基础上寻找亚像素角点
-        cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
-        #追加进入世界三维点和平面二维点中
-        objpoints.append(objp)
-        imgpoints.append(corners)
-        print('?4')
-        # 将角点在图像上显示
-        #cv2.drawChessboardCorners(img, (w,h), corners, ret)
-        #cv2.namedWindow('findCorners', cv2.WINDOW_NORMAL)
-        #cv2.resizeWindow('findCorners', 640, 480)
-        #cv2.imshow('findCorners',img)
-        #cv2.waitKey(200)
-cv2.destroyAllWindows()
-#%% 标定
-print('正在计算')
-#标定
-ret, mtx, dist, rvecs, tvecs = \
-    cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+        self.baseline = calibration.T[0]
 
 
-print("ret:",ret  )
-print("mtx:\n",mtx)      # 内参数矩阵
-print("dist畸变值:\n",dist   )   # 畸变系数   distortion cofficients = (k_1,k_2,p_1,p_2,k_3)
-print("rvecs旋转（向量）外参:\n",rvecs)   # 旋转向量  # 外参数
-print("tvecs平移（向量）外参:\n",tvecs  )  # 平移向量  # 外参数
-newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (u, v), 0, (u, v))
-print('newcameramtx外参',newcameramtx)
-cv2.destroyAllWindows()
+def preprocess(img1, img2):
+    # 彩色图->灰度图
+    im1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    im2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+    # 直方图均衡
+    im1 = cv2.equalizeHist(im1)
+    im2 = cv2.equalizeHist(im2)
+
+    return im1, im2
+
+
+# 消除畸变
+def undistortion(image, camera_matrix, dist_coeff):
+    undistortion_image = cv2.undistort(image, camera_matrix, dist_coeff)
+
+    return undistortion_image
+
+
+# 获取畸变校正和立体校正的映射变换矩阵、重投影矩阵
+# @param：config是一个类，存储着双目标定的参数:config = stereoconfig.stereoCamera()
+
+def getRectifyTransform(height, width, config):
+    # 读取内参和外参
+    left_K = config.cam_matrix_left
+    right_K = config.cam_matrix_right
+    left_distortion = config.distortion_l
+    right_distortion = config.distortion_r
+    R = config.R
+    T = config.T
+
+    # 计算校正变换
+    height = int(height)
+    width = int(width)
+    R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(left_K, left_distortion, right_K, right_distortion,
+                                                      (width, height), R, T, alpha=-1)
+
+    map1x, map1y = cv2.initUndistortRectifyMap(left_K, left_distortion, R1, P1, (width, height), cv2.CV_16SC2)
+    map2x, map2y = cv2.initUndistortRectifyMap(right_K, right_distortion, R2, P2, (width, height), cv2.CV_16SC2)
+    print(width, height)
+
+    return map1x, map1y, map2x, map2y, Q
+
+
+# 畸变校正和立体校正
+def rectifyImage(image1, image2, map1x, map1y, map2x, map2y):
+    rectifyed_img1 = cv2.remap(image1, map1x, map1y, cv2.INTER_LINEAR)
+    rectifyed_img2 = cv2.remap(image2, map2x, map2y, cv2.INTER_LINEAR)
+
+    return rectifyed_img1, rectifyed_img2
+
+
+# 立体校正检验----画线
+def draw_line1(image1, image2):
+    # 建立输出图像
+    height = max(image1.shape[0], image2.shape[0])
+    width = image1.shape[1] + image2.shape[1]
+
+    output = np.zeros((height, width, 3), dtype=np.uint8)
+    output[0:image1.shape[0], 0:image1.shape[1]] = image1
+    output[0:image2.shape[0], image1.shape[1]:] = image2
+
+    for k in range(15):
+        cv2.line(output, (0, 50 * (k + 1)), (2 * width, 50 * (k + 1)), (0, 255, 0), thickness=2,
+                 lineType=cv2.LINE_AA)  # 直线间隔：100
+
+    return output
+
+
+# 立体校正检验----画线
+def draw_line2(image1, image2):
+    # 建立输出图像
+    height = max(image1.shape[0], image2.shape[0])
+    width = image1.shape[1] + image2.shape[1]
+
+    output = np.zeros((height, width), dtype=np.uint8)
+    output[0:image1.shape[0], 0:image1.shape[1]] = image1
+    output[0:image2.shape[0], image1.shape[1]:] = image2
+
+    for k in range(15):
+        cv2.line(output, (0, 50 * (k + 1)), (2 * width, 50 * (k + 1)), (0, 255, 0), thickness=2,
+                 lineType=cv2.LINE_AA)  # 直线间隔：100
+
+    return output
+
+
+if __name__ == '__main__':
+    #     calibration_photo()
+    calibration = StereoCalibration()
+    calibration.calibration_photo()
+
+    for case in range(0,101):
+        imgL = cv2.imread(os.path.join(pthRoot,'camera0',str(case) + '.jpg'))
+        imgL = cv2.imread(os.path.join(pthRoot,'camera1',str(case) + '.jpg'))
+    #     imgL , imgR = preprocess(imgL ,imgR )
+
+        height, width = imgL.shape[0:2]
+        config = stereoCamera()  # 读取相机内参和外参
+
+    # 去畸变
+        imgL = undistortion(imgL, config.cam_matrix_left, config.distortion_l)
+        imgR = undistortion(imgR, config.cam_matrix_right, config.distortion_r)
+
+    # 去畸变和几何极线对齐
+        map1x, map1y, map2x, map2y, Q = getRectifyTransform(height, width, config)
+        iml_rectified, imr_rectified = rectifyImage(imgL, imgR, map1x, map1y, map2x, map2y)
+        linepic = draw_line1(iml_rectified, imr_rectified)
+        plt.imshow(linepic)
+
