@@ -179,7 +179,7 @@ def undistortion(image, camera_matrix, dist_coeff):
 # 获取畸变校正和立体校正的映射变换矩阵、重投影矩阵
 # @param：config是一个类，存储着双目标定的参数:config = stereoconfig.stereoCamera()
 
-def getRectifyTransform(height, width, config):
+def getRectifyTransform_type1(height, width, config):
     # 读取内参和外参
     left_K = config.cam_matrix_left
     right_K = config.cam_matrix_right
@@ -200,41 +200,41 @@ def getRectifyTransform(height, width, config):
 
     return map1x, map1y, map2x, map2y, Q
 
-# def getRectifyTransform(m1, d1, m2, d2, width, height, r, t):
-#     R1, R2, P1, P2, Q, _roi1, _roi2 = \
-#     cv2.stereoRectify(cameraMatrix1=m1,
-#                       distCoeffs1=d1,
-#                       cameraMatrix2=m2,
-#                       distCoeffs2=d2,
-#                       imageSize=(width, height),
-#                       R=r,
-#                       T=t,
-#                       # flags=0,
-#                       flags=cv2.CALIB_ZERO_DISPARITY + cv2.CALIB_USE_INTRINSIC_GUESS,
-#                       # flags = cv2.CALIB_ZERO_DISPARITY,
-#                       alpha=0.0
-#                       )
-#
-#     map1_x, map1_y = cv2.initUndistortRectifyMap(
-#         cameraMatrix=m1,
-#         distCoeffs=d1,
-#         R=R1,
-#         newCameraMatrix=P1,
-#         size=(width, height),
-#         m1type=cv2.CV_32FC1)
-#
-#     map2_x, map2_y = cv2.initUndistortRectifyMap(
-#         cameraMatrix=m2,
-#         distCoeffs=d2,
-#         R=R2,
-#         newCameraMatrix=P2,
-#         size=(width, height),
-#         m1type=cv2.CV_32FC1)
-#
-#     f = Q[2, 3]
-#     baseline = 1./Q[3, 2]
-#
-#     return map1_x, map1_y, map2_x, map2_y, f, baseline, Q
+def getRectifyTransform_type2(m1, d1, m2, d2, width, height, r, t):
+    R1, R2, P1, P2, Q, _roi1, _roi2 = \
+    cv2.stereoRectify(cameraMatrix1=m1,
+                      distCoeffs1=d1,
+                      cameraMatrix2=m2,
+                      distCoeffs2=d2,
+                      imageSize=(width, height),
+                      R=r,
+                      T=t,
+                      # flags=0,
+                      flags=cv2.CALIB_ZERO_DISPARITY + cv2.CALIB_USE_INTRINSIC_GUESS,
+                      # flags = cv2.CALIB_ZERO_DISPARITY,
+                      alpha=0.0
+                      )
+
+    map1_x, map1_y = cv2.initUndistortRectifyMap(
+        cameraMatrix=m1,
+        distCoeffs=d1,
+        R=R1,
+        newCameraMatrix=P1,
+        size=(width, height),
+        m1type=cv2.CV_32FC1)
+
+    map2_x, map2_y = cv2.initUndistortRectifyMap(
+        cameraMatrix=m2,
+        distCoeffs=d2,
+        R=R2,
+        newCameraMatrix=P2,
+        size=(width, height),
+        m1type=cv2.CV_32FC1)
+
+    f = Q[2, 3]
+    baseline = 1./Q[3, 2]
+
+    return map1_x, map1_y, map2_x, map2_y, f, baseline, Q
 
 
 # 畸变校正和立体校正
@@ -266,21 +266,14 @@ if __name__ == '__main__':
     # calibration.calibration_photo()
 
     config = stereoCamera()  # 读取相机内参和外参
-    # map1_x, map1_y, map2_x, map2_y, f, baseline, Q = getRectifyTransform(config.cam_matrix_left,config.distortion_l,config.cam_matrix_right,config.distortion_r,config.w,config.h,config.R, config.T)
-    map1_x, map1_y, map2_x, map2_y, Q=getRectifyTransform(1840,2448,config)
+    # map1_x, map1_y, map2_x, map2_y, f, baseline, Q = getRectifyTransform_type2(config.cam_matrix_left,config.distortion_l,config.cam_matrix_right,config.distortion_r,config.w,config.h,config.R, config.T)
+    map1_x, map1_y, map2_x, map2_y, Q=getRectifyTransform_type1(1840,2448,config)
 
     #
     for case in range(0,101):
         imgL = cv2.imread(os.path.join(pthRoot,'camera1',str(case) + '.jpg'))
         imgR = cv2.imread(os.path.join(pthRoot,'camera0',str(case) + '.jpg'))
     # #     imgL , imgR = preprocess(imgL ,imgR )
-    #
-    #     height, width = imgL.shape[0:2]
-    #
-    #
-    # # 去畸变
-    #     imgL = undistortion(imgL, config.cam_matrix_left, config.distortion_l)
-    #     imgR = undistortion(imgR, config.cam_matrix_right, config.distortion_r)
     #
     # # 去畸变和几何极线对齐
         iml_rectified, imr_rectified = rectifyImage(imgL, imgR, map1_x, map1_y, map2_x, map2_y)
