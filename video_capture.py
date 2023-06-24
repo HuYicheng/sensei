@@ -189,7 +189,7 @@ fps = 30
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(video_path, fourcc, fps, (size[0], size[1]), True)
 
-#video record
+##video record
 print('Starting video. Press ESC to exit.')
 t0 = time.time()
 while True:
