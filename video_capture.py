@@ -63,6 +63,8 @@ class Camera2Reader(threading.Thread):
     def stop(self):
         self.running = False
 
+##initialization
+#shutter initialization
 com = serial.Serial(port='COM6',
                         baudrate=115200,
                         bytesize=8,
@@ -84,17 +86,22 @@ com.write(bytearray([0x10, 0x02, 0x01, 0x01, 0x21, 0x01]))  # enable
 com.flushInput()
 com.flushOutput()
 
+#sensei initialization
 ser = serial.Serial(port="COM3",
                     baudrate=115200,
                     bytesize=8,
                     timeout=2,
                     stopbits=serial.STOPBITS_ONE)
 print('the status of ser is %s'%ser.is_open)
+
+#create a threading instance to read sensei number
 serial_reader = SerialReader(ser)
 serial_reader.start()
 
 rootdir='E:\Download\Ximea-2023-Phantom-laser-rotate'
 
+
+#projector initialization
 patternDir = os.path.join(rootdir, 'GrayCode_pattern_10bit')
 patterns = sorted(glob.glob(patternDir + '/*.png'))
 
@@ -118,6 +125,8 @@ def showPatternImg(patternCnt):
 
 showPatternImg(23)
 
+
+#camera initialization
 cam1 = xiapi.Camera(dev_id=0) #create instance for cameras
 cam2 = xiapi.Camera(dev_id=1)
 
@@ -129,8 +138,8 @@ print('Opening first camera...')
 cam1.open_device()
 cam2.open_device()
 
-# settings
 
+# camera settings
 cam1.set_imgdataformat('XI_RGB24')
 cam1.set_exposure(10000)
 cam1.disable_auto_wb()
@@ -160,11 +169,13 @@ print('Starting data acquisition...')
 cam1.start_acquisition()
 cam2.start_acquisition()
 
+#create threading instance to collect image
 camera1_reader = Camera1Reader(cam1, img1)
 camera2_reader = Camera2Reader(cam2, img2)
 camera1_reader.start()
 camera2_reader.start()
 
+#initialize video record
 video_root=r'E:\Download\Ximea-2023-Phantom-laser-rotate\video'
 if not os.path.exists(video_root):
         os.makedirs(video_root)
@@ -178,35 +189,36 @@ fps = 30
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = cv2.VideoWriter(video_path, fourcc, fps, (size[0], size[1]), True)
 
-
+#video record
 print('Starting video. Press ESC to exit.')
 t0 = time.time()
 while True:
 
+    #read the latest image from threading instance
     data1 = camera1_reader.current_data1
     data2 = camera2_reader.current_data2
     if data1 is None or data2 is None:
             continue
 
+    #read the latest sensei number from threading
     num_sensei = serial_reader.current_value
 
-    # show acquired image with time since the beginning of acquisition
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    point1_x,point1_y=[random.randint(500, 600),random.randint(700, 800)]
-    cv2.circle(data1, (point1_x,point1_y), 10, (0,0,255), -1)
-    cv2.putText(data1,num_sensei,(point1_x+3, point1_y+3),font,4,(255, 255, 255), 2)
-    cv2.putText(data1, 'camera0', (900, 150), font, 4, (255, 255, 255), 2)
+    point1_x,point1_y=[random.randint(500, 600),random.randint(700, 800)] #laser point position infered
+    cv2.circle(data1, (point1_x,point1_y), 10, (0,0,255), -1) #annotate the point on the left image
+    cv2.putText(data1,num_sensei,(point1_x+3, point1_y+3),font,4,(255, 255, 255), 2) #annotate the sensei number on the left image
+    cv2.putText(data1, 'camera0', (900, 150), font, 4, (255, 255, 255), 2) #annotate which camera it is
 
-    point2_x,point2_y=[random.randint(800, 850),random.randint(450, 500)]
-    cv2.circle(data2, (point2_x,point2_y), 10, (0,0,255), -1)
-    cv2.putText(data2,num_sensei,(point2_x+3, point2_y+3),font,4,(255, 255, 255), 2)
-    cv2.putText(data2, 'camera1', (900, 150), font, 4, (255, 255, 255), 2)
+    point2_x,point2_y=[random.randint(800, 850),random.randint(450, 500)] #laser point position infered
+    cv2.circle(data2, (point2_x,point2_y), 10, (0,0,255), -1) #annotate the point on the right image
+    cv2.putText(data2,num_sensei,(point2_x+3, point2_y+3),font,4,(255, 255, 255), 2) #annotate the sensei number on the right image
+    cv2.putText(data2, 'camera1', (900, 150), font, 4, (255, 255, 255), 2) #annotate which camera it is
 
 
-    text = '{:5.2f}'.format(time.time() - t0)
-    data=np.concatenate((data1,data2),axis=1)
-    cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2)
+    text = '{:5.2f}'.format(time.time() - t0) #how long the video is
+    data=np.concatenate((data1,data2),axis=1) # stack left and right images
+    cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2) #annotate the time on the video
 
     data_resized=cv2.resize(data, dsize=(size[0], size[1]))
 
