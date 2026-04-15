@@ -127,25 +127,22 @@ cam2.open_device()
 
 # camera settings
 cam1.set_imgdataformat('XI_RGB24')
-cam1.set_exposure(10000)
+cam1.set_exposure(50000)
 cam1.disable_auto_wb()
-cam1.set_wb_kr(1.105)
-cam1.set_wb_kg(0.980)
+cam1.set_wb_kr(1.110)
+cam1.set_wb_kg(0.985)
 cam1.set_wb_kb(2.5)
-cam1.set_gain(0)
 cam1.set_downsampling('XI_DWN_2x2')
 cam1.set_gain(20)
 
 cam2.set_imgdataformat('XI_RGB24')
-cam2.set_exposure(10000)
+cam2.set_exposure(50000)
 cam2.disable_auto_wb()
-cam2.set_wb_kr(1.106)
-cam2.set_wb_kg(0.985)
+cam2.set_wb_kr(1.110)
+cam2.set_wb_kg(1.001)
 cam2.set_wb_kb(2.435)
-cam2.set_gain(0)
 cam2.set_downsampling('XI_DWN_2x2')
 cam2.set_gain(20)
-
 
 # create instance of Image to store image data and metadata
 img1 = xiapi.Image()
@@ -163,18 +160,27 @@ camera1_reader.start()
 camera2_reader.start()
 
 #initialize video record
-video_root=r'E:\Download\Ximea-2023-Phantom-laser-rotate\video'
-if not os.path.exists(video_root):
-        os.makedirs(video_root)
-video_path=os.path.join(video_root,'sensei.mp4')
-#
-size = [2448*2//4, 1840//4]
-print(size[0])
-print(size)
-# duration = 2
-fps = 30
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter(video_path, fourcc, fps, (size[0], size[1]), True)
+pthRoot = os.path.join(rootdir, 'collectedData', 'video_picture')
+
+if not os.path.isdir(pthRoot):
+    os.makedirs(pthRoot)
+
+pthRoot_C0 = os.path.join(pthRoot, 'camera0')
+pthRoot_C1 = os.path.join(pthRoot, 'camera1')
+
+if not os.path.isdir(pthRoot_C0):
+    os.makedirs(pthRoot_C0)
+if not os.path.isdir(pthRoot_C1):
+    os.makedirs(pthRoot_C1)
+
+pthRoot_rgb_C0 = os.path.join(pthRoot_C0, 'rgb')
+pthRoot_rgb_C1 = os.path.join(pthRoot_C1, 'rgb')
+
+if not os.path.isdir(pthRoot_rgb_C0):
+    os.makedirs(pthRoot_rgb_C0)
+if not os.path.isdir(pthRoot_rgb_C1):
+    os.makedirs(pthRoot_rgb_C1)
+
 
 ##video record
 print('Starting video. Press ESC to exit.')
@@ -187,35 +193,25 @@ while True:
     if data1 is None or data2 is None:
             continue
 
-    #read the latest sensei number from threading
-    num_sensei = serial_reader.current_value
+    case=len(os.listdir(pthRoot_rgb_C0))
+    print(case)
 
-    font = cv2.FONT_HERSHEY_SIMPLEX
+    path_RGB_rgb_C0 = os.path.join(pthRoot_rgb_C0, '{:05d}.jpg'.format(case))
+    path_RGB_rgb_C1 = os.path.join(pthRoot_rgb_C1, '{:05d}.jpg'.format(case))
+    data1=cv2.flip(data1,1)
+    data2=cv2.flip(data2,1)
+    cv2.imwrite(path_RGB_rgb_C0, data1)
+    cv2.imwrite(path_RGB_rgb_C1, data2)
 
-    point1_x,point1_y=[random.randint(500, 600),random.randint(700, 800)] #laser point position infered
-    cv2.circle(data1, (point1_x,point1_y), 10, (0,0,255), -1) #annotate the point on the left image
-    cv2.putText(data1,num_sensei,(point1_x+3, point1_y+3),font,4,(255, 255, 255), 2) #annotate the sensei number on the left image
-    cv2.putText(data1, 'camera0', (900, 150), font, 4, (255, 255, 255), 2) #annotate which camera it is
-
-    point2_x,point2_y=[random.randint(800, 850),random.randint(450, 500)] #laser point position infered
-    cv2.circle(data2, (point2_x,point2_y), 10, (0,0,255), -1) #annotate the point on the right image
-    cv2.putText(data2,num_sensei,(point2_x+3, point2_y+3),font,4,(255, 255, 255), 2) #annotate the sensei number on the right image
-    cv2.putText(data2, 'camera1', (900, 150), font, 4, (255, 255, 255), 2) #annotate which camera it is
+    img=np.hstack((data1,data2))
+    img=cv2.resize(img,(1224,920//2))
+    cv2.imshow('img',img)
 
 
-    text = '{:5.2f}'.format(time.time() - t0) #how long the video is
-    data=np.concatenate((data1,data2),axis=1) # stack left and right images
-    cv2.putText(data,text,(data.shape[1]//2-200, data.shape[0]-200),font,4,(255, 255, 255), 2) #annotate the time on the video
-
-    data_resized=cv2.resize(data, dsize=(size[0], size[1]))
-
-    cv2.imshow('cam1 & cam2',data_resized)
-    out.write(data_resized)
 
     k = cv2.waitKey(1) & 0Xff
     if k==27:
         cv2.destroyAllWindows()
-        out.release()
         break
 
 # stop process

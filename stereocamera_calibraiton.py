@@ -9,7 +9,7 @@ import glob
 import os
 
 rootdir = os.getcwd()
-pthRoot = os.path.join(rootdir, 'calibrationData','13')
+pthRoot = os.path.join(rootdir, 'calibrationData','35')
 pthRoot_C0 = os.path.join(pthRoot, 'camera0')
 pthRoot_C1 = os.path.join(pthRoot, 'camera1')
 
@@ -46,14 +46,19 @@ class StereoCalibration(object):
         image_positionr = []
         # 设置角点查找限制
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        n=len(os.listdir(pthRoot_C0))
+        n_true=0
         # 获取所有标定图
-        for ii in range(101):
+        for ii in range(n):
+            print(ii)
 
             image_path_l = self.imagesL[ii]
             image_path_r = self.imagesR[ii]
 
             image_l = cv2.imread(image_path_l)
             image_r = cv2.imread(image_path_r)
+            # image_l = cv2.flip(image_l,1)
+            # image_r = cv2.flip(image_r,1)
             gray_l = cv2.cvtColor(image_l, cv2.COLOR_RGB2GRAY)
             gray_r = cv2.cvtColor(image_r, cv2.COLOR_RGB2GRAY)
 
@@ -66,11 +71,13 @@ class StereoCalibration(object):
 
             self.world = world_point
             print(ok1 & ok2)
+
             if ok1 & ok2:
+                n_true+=1
                 # 把每一幅图像的世界坐标放到world_position中
 
 
-                center_spacing = 15  ## 圆心的位置距离，这一个其实不重要
+                center_spacing = 15  ## 圆心的位置距离
                 world_position.append(world_point * center_spacing)
                 # 获取更精确的角点位置
                 exact_cornersl = cv2.cornerSubPix(gray_l, cornersl, (11, 11), (-1, -1), criteria)
@@ -79,22 +86,29 @@ class StereoCalibration(object):
                 image_positionl.append(exact_cornersl)
                 image_positionr.append(exact_cornersr)
                 # 可视化角点
-                image_l = cv2.drawChessboardCorners(image_l,(x_nums,y_nums),exact_cornersl,ok1)
-                image_r = cv2.drawChessboardCorners(image_r,(x_nums,y_nums),exact_cornersr,ok2)
-                image=np.hstack((image_l,image_r))
-                cv2.namedWindow('image_corner', 0)
-                cv2.resizeWindow('image_corner', 2448//2, 1840//4)  # 初始窗口大小
-                cv2.imshow('image_corner',image)
-                cv2.waitKey(3)
-        # 计算内参数
-        image_shape = gray_l.shape[::-1]
+                # image_l = cv2.drawChessboardCorners(image_l,(x_nums,y_nums),exact_cornersl,ok1)
+                # image_r = cv2.drawChessboardCorners(image_r,(x_nums,y_nums),exact_cornersr,ok2)
+                # image=np.hstack((image_l,image_r))
+                # cv2.namedWindow('image_corner', 0)
+                # # cv2.resizeWindow('image_corner', 2448*2//2, 1840//2)  # 初始窗口大小
+                # cv2.imshow('image_corner',image)
+                # cv2.waitKey(0)
 
-        retl, mtxl, distl, rvecsl, tvecsl = cv2.calibrateCamera(world_position, image_positionl, image_shape, None,None)
-        retr, mtxr, distr, rvecsr, tvecsr = cv2.calibrateCamera(world_position, image_positionr, image_shape, None,None)
-        print('ml = ', mtxl)
-        print('mr = ', mtxr)
-        print('dl = ', distl)
-        print('dr = ', distr)
+            else:
+                print(ok1)
+                print(ok2)
+        print("%d true of %d cases" %(n_true,n))
+        # 计算内参数
+        image_shape_l = gray_l.shape[::-1]
+        image_shape_r = gray_r.shape[::-1]
+        print(image_shape_r)
+
+        retl, mtxl, distl, rvecsl, tvecsl = cv2.calibrateCamera(world_position, image_positionl, image_shape_l, None,None)
+        retr, mtxr, distr, rvecsr, tvecsr = cv2.calibrateCamera(world_position, image_positionr, image_shape_r, None,None)
+        print('ml = ', np.array2string(mtxl, separator=', '))
+        print('mr = ', np.array2string(mtxr, separator=', '))
+        print('dl = ', np.array2string(distl, separator=', '))
+        print('dr = ', np.array2string(distr, separator=', '))
         self.m1 = mtxl
         self.m2 = mtxr
         self.d1 = distl
@@ -105,7 +119,7 @@ class StereoCalibration(object):
         self.cal_error(world_position, image_positionr, mtxr, distr, rvecsr, tvecsr)
 
         ##双目标定
-        self.stereo_calibrate(world_position, image_positionl, image_positionr, mtxl, distl, mtxr, distr, image_shape)
+        self.stereo_calibrate(world_position, image_positionl, image_positionr, mtxl, distl, mtxr, distr, image_shape_l)
 
     def cal_error(self, world_position, image_position, mtx, dist, rvecs, tvecs):
         # 计算偏差
@@ -129,30 +143,49 @@ class StereoCalibration(object):
             d2, dims,
             criteria=stereocalib_criteria, flags=flags)
         baseline=np.linalg.norm(T)
-        print(R)
-        print(T)
-        print(baseline)
+        print('R=',np.array2string(R, separator=', '))
+        print('T=',np.array2string(T, separator=', '))
+        print('Baseline=%f'%baseline)
+        print('repojection error=%f'%ret)
         self.R = R
         self.T = T
         self.baseline=baseline
 
 
 
-class stereoCamera(object):
+class stereoCamera(StereoCalibration):
+
     def __init__(self):
-        # 左相机内参数
-        self.cam_matrix_left =  np.array([[2.84525888e+03,0.00000000e+00,1.02109209e+03],[0.00000000e+00,2.86052215e+03,1.39848196e+03],[0.00000000e+00,0.00000000e+00,1.00000000e+00]])
-        self.cam_matrix_right = np.array([[2.80262721e+03,0.00000000e+00,1.40090626e+03],[0.00000000e+00,2.81485044e+03,1.38589861e+03],[0.00000000e+00,0.00000000e+00,1.00000000e+00]])
+        super().__init__()
+        # # # 左相机内参数
+        # self.cam_matrix_left =  np.array([[2.87155561e+03, 0.00000000e+00, 1.06798029e+03],[0.00000000e+00, 2.86979155e+03, 1.42128384e+03],[0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+        # self.cam_matrix_right = np.array([[2.78307166e+03, 0.00000000e+00, 1.38203684e+03],[0.00000000e+00, 2.78974384e+03, 1.49721480e+03],[0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+        # #
+        # # # 左右相机畸变系数:[k1, k2, p1, p2, k3]
+        # self.distortion_l = np.array([[-0.21638417,  0.95514709, -0.00348429, -0.00407935, -0.49321613]])
+        # self.distortion_r = np.array([[-0.27307921 , 0.53144523 , 0.00107559, -0.00700134, -0.04938198]])
+        # # # 旋转矩阵
+        # #
+        # self.R = np.array([[ 0.99996903 , 0.00363907 ,-0.00697839],[-0.00374069,  0.99988636, -0.01460419],[ 0.00692445,  0.01462984 , 0.999869  ]])
+        # # # 平移矩阵
+        # self.T = np.array([[-6.98216348],[-0.38330484],[-5.80167592]])
+        # self.baseline = np.linalg.norm(self.T)
+        # self.h=1840
+        # self.w=2448
+
+
+        self.cam_matrix_left =  calibration.m1
+        self.cam_matrix_right = calibration.m2
 
         # 左右相机畸变系数:[k1, k2, p1, p2, k3]
-        self.distortion_l = np.array([[-0.16131281,0.67745708,0.00330204,-0.00949782,-0.22828643]])
-        self.distortion_r = np.array([[-0.27166724,0.47052358,0.00415972,-0.00575537,0.33973046]])
+        self.distortion_l = calibration.d1
+        self.distortion_r = calibration.d2
         # 旋转矩阵
 
-        self.R = np.array([[ 0.99988162,0.00389399,-0.01488561],[-0.00306736,0.99847301,0.05515653],[ 0.01507766,-0.05510434,0.99836675]])
+        self.R = calibration.R
         # 平移矩阵
-        self.T = np.array([[ -5.42058745],[-10.60804364],[ -4.82106943]])
-        self.baseline = np.linalg.norm(self.T)
+        self.T = calibration.T
+        self.baseline = np.linalg.norm(calibration.T)
         self.h=1840
         self.w=2448
 
@@ -192,7 +225,7 @@ def getRectifyTransform_type1(height, width, config):
     height = int(height)
     width = int(width)
     R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(left_K, left_distortion, right_K, right_distortion,
-                                                      (width, height), R, T, alpha=-1)
+                                                      (width, height), R, T)
 
     map1x, map1y = cv2.initUndistortRectifyMap(left_K, left_distortion, R1, P1, (width, height), cv2.CV_16SC2)
     map2x, map2y = cv2.initUndistortRectifyMap(right_K, right_distortion, R2, P2, (width, height), cv2.CV_16SC2)
@@ -212,7 +245,7 @@ def getRectifyTransform_type2(m1, d1, m2, d2, width, height, r, t):
                       # flags=0,
                       flags=cv2.CALIB_ZERO_DISPARITY + cv2.CALIB_USE_INTRINSIC_GUESS,
                       # flags = cv2.CALIB_ZERO_DISPARITY,
-                      alpha=0.0
+                      alpha=0
                       )
 
     map1_x, map1_y = cv2.initUndistortRectifyMap(
@@ -262,17 +295,19 @@ def draw_line1(image1, image2):
 
 
 if __name__ == '__main__':
-    # calibration = StereoCalibration()
-    # calibration.calibration_photo()
+    calibration = StereoCalibration()
+    calibration.calibration_photo()
 
     config = stereoCamera()  # 读取相机内参和外参
     # map1_x, map1_y, map2_x, map2_y, f, baseline, Q = getRectifyTransform_type2(config.cam_matrix_left,config.distortion_l,config.cam_matrix_right,config.distortion_r,config.w,config.h,config.R, config.T)
     map1_x, map1_y, map2_x, map2_y, Q=getRectifyTransform_type1(1840,2448,config)
 
     #
-    for case in range(0,101):
-        imgL = cv2.imread(os.path.join(pthRoot,'camera1',str(case) + '.jpg'))
-        imgR = cv2.imread(os.path.join(pthRoot,'camera0',str(case) + '.jpg'))
+    for case in range(len(os.listdir(pthRoot_C0))):
+        imgL = cv2.imread(os.path.join(pthRoot,'camera0',str(case) + '.jpg'))
+        imgR = cv2.imread(os.path.join(pthRoot,'camera1',str(case) + '.jpg'))
+        # imgL=cv2.flip(imgL,1)
+        # imgR=cv2.flip(imgR,1)
     # #     imgL , imgR = preprocess(imgL ,imgR )
     #
     # # 去畸变和几何极线对齐

@@ -64,7 +64,7 @@ print('Camera 2 serial number: ' + str(cam2.get_device_sn()))
 cam1.set_imgdataformat('XI_RGB24')
 cam1.set_exposure(1000000)
 cam1.disable_auto_wb()
-cam1.set_wb_kr(1.110)
+cam1.set_wb_kr(1.105)
 cam1.set_wb_kg(0.980)
 cam1.set_wb_kb(2.5)
 cam1.set_gain(0)
@@ -73,8 +73,8 @@ cam1.set_downsampling('XI_DWN_2x2')
 cam2.set_imgdataformat('XI_RGB24')
 cam2.set_exposure(1000000)
 cam2.disable_auto_wb()
-cam2.set_wb_kr(1.110)
-cam2.set_wb_kg(1.001)
+cam2.set_wb_kr(1.106)
+cam2.set_wb_kg(0.985)
 cam2.set_wb_kb(2.435)
 cam2.set_gain(0)
 cam2.set_downsampling('XI_DWN_2x2')
@@ -227,7 +227,7 @@ while True:
     else:
         print('Please Use y or n')
 
-pthRoot = os.path.join(rootdir, 'collectedData', 'test_pattern_ppt')
+pthRoot = os.path.join(rootdir, 'collectedData', 'Integrated_Test')
 
 if not os.path.isdir(pthRoot):
     os.makedirs(pthRoot)

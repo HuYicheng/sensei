@@ -63,19 +63,19 @@ print('Camera 2 serial number: ' + str(cam2.get_device_sn()))
 #Ximea settings
 
 cam1.set_imgdataformat('XI_RGB24')
-cam1.set_exposure(200000)
+cam1.set_exposure(100000)
 cam1.disable_auto_wb()
-cam1.set_wb_kr(1.110)
+cam1.set_wb_kr(1.105)
 cam1.set_wb_kg(0.980)
 cam1.set_wb_kb(2.5)
 cam1.set_gain(0)
 cam1.set_downsampling('XI_DWN_2x2')
 
 cam2.set_imgdataformat('XI_RGB24')
-cam2.set_exposure(200000)
+cam2.set_exposure(100000)
 cam2.disable_auto_wb()
-cam2.set_wb_kr(1.110)
-cam2.set_wb_kg(1.001)
+cam2.set_wb_kr(1.106)
+cam2.set_wb_kg(0.985)
 cam2.set_wb_kb(2.435)
 cam2.set_gain(0)
 cam2.set_downsampling('XI_DWN_2x2')
@@ -129,7 +129,7 @@ def showPatternImg(patternCnt):
 
 
 # Get current dir and creat folders for the day
-pthRoot = os.path.join(rootdir, 'calibrationData','13')
+pthRoot = os.path.join(rootdir, 'calibrationData','43')
 pthRoot_C0 = os.path.join(pthRoot, 'camera0')
 pthRoot_C1 = os.path.join(pthRoot, 'camera1')
 
@@ -154,14 +154,14 @@ while True:
         cam2.get_image(img2)
         data_raw1 = img1.get_image_data_numpy()
         data_raw2 = img2.get_image_data_numpy()
-        data_raw_1=data_raw1[1000:1250,500:750,:]
-        data_raw_2 = data_raw2[1000:1250,500:750,:]
+        data_raw_1=data_raw1[1000:1250,1000:1250,:]
+        data_raw_2 = data_raw2[1000:1250,1000:1250,:]
         cv2.imshow('CAM 1_full', cv2.resize(data_raw1, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
         cv2.imshow('CAM 2_full', cv2.resize(data_raw2, dsize=(640,480), interpolation=cv2.INTER_CUBIC))
 
 
-        cv2.imshow('CAM 1_focus',data_raw_1)
-        cv2.imshow('CAM 2_focus',data_raw_2)
+        cv2.imshow('CAM 1_focus', cv2.resize(data_raw_1, dsize=(500,500)))
+        cv2.imshow('CAM 2_focus', cv2.resize(data_raw_2, dsize=(500,500)))
 
         # cv2.imshow('CAM 1',data_raw1)
         # cv2.imshow('CAM 2', data_raw2)
